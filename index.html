@@ -425,7 +425,7 @@
 
         async function fetchSPX() {
             try {
-                const res = await fetch('https://query1.finance.yahoo.com/v8/finance/chart/%5EGSPC?interval=1d&range=5d');
+                const res = await fetch('https://corsproxy.io/?' + encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/%5EGSPC?interval=1d&range=5d'));
                 if (!res.ok) throw new Error('Yahoo blocked');
                 const data = await res.json();
                 const meta = data.chart.result[0].meta;
@@ -446,7 +446,7 @@
 
         async function fetchVIX() {
             try {
-                const res = await fetch('https://query1.finance.yahoo.com/v8/finance/chart/%5EVIX?interval=1d&range=5d');
+                const res = await fetch('https://corsproxy.io/?' + encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/%5EVIX?interval=1d&range=5d'));
                 if (!res.ok) throw new Error('Yahoo blocked');
                 const data = await res.json();
                 const vixVal = data.chart.result[0].meta.regularMarketPrice;
