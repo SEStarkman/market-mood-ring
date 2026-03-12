@@ -423,33 +423,24 @@
             }
         }
 
-        async function fetchSPX() {
+        async function fetchSPXandVIX() {
             try {
-                const res = await fetch('https://corsproxy.io/?' + encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/%5EGSPC?interval=1d&range=5d'));
-                if (!res.ok) throw new Error('Yahoo blocked');
+                const res = await fetch('https://marketapi.samstarkman.com/');
+                if (!res.ok) throw new Error('API error');
                 const data = await res.json();
-                const meta = data.chart.result[0].meta;
-                const price = meta.regularMarketPrice;
-                const prevClose = meta.chartPreviousClose;
-                const change = ((price - prevClose) / prevClose) * 100;
+
+                // SPX
+                const price = data.spx.price;
+                const change = data.spx.change;
                 signals.spx24h = change;
                 updateCard('card-spx', {
                     value: price.toLocaleString('en-US', { maximumFractionDigits: 0 }),
                     detail: formatChange(change),
                     sentiment: changeTo100(change, 3),
                 });
-            } catch (e) {
-                console.error('SPX error:', e);
-                updateCard('card-spx', { value: 'N/A', detail: 'Unavailable', sentiment: 50 });
-            }
-        }
 
-        async function fetchVIX() {
-            try {
-                const res = await fetch('https://corsproxy.io/?' + encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/%5EVIX?interval=1d&range=5d'));
-                if (!res.ok) throw new Error('Yahoo blocked');
-                const data = await res.json();
-                const vixVal = data.chart.result[0].meta.regularMarketPrice;
+                // VIX
+                const vixVal = data.vix.value;
                 signals.vix = vixVal;
                 let label = 'Calm';
                 if (vixVal > 30) label = 'Extreme Fear';
@@ -462,10 +453,14 @@
                     sentiment: vixTo100(vixVal),
                 });
             } catch (e) {
-                console.error('VIX error:', e);
+                console.error('Market API error:', e);
+                updateCard('card-spx', { value: 'N/A', detail: 'Unavailable', sentiment: 50 });
                 updateCard('card-vix', { value: 'N/A', detail: 'Unavailable', sentiment: 50 });
             }
         }
+
+        async function fetchSPX() { /* handled by fetchSPXandVIX */ }
+        async function fetchVIX() { /* handled by fetchSPXandVIX */ }
 
         function changeTo100(pctChange, extremeThreshold) {
             const clamped = Math.max(-extremeThreshold, Math.min(extremeThreshold, pctChange));
@@ -560,7 +555,7 @@
         }
 
         async function fetchAll() {
-            await Promise.all([fetchCryptoFearGreed(), fetchBTC(), fetchSPX(), fetchVIX()]);
+            await Promise.all([fetchCryptoFearGreed(), fetchBTC(), fetchSPXandVIX()]);
             computeComposite();
             document.getElementById('lastUpdated').textContent =
                 new Date().toLocaleString('en-US', {

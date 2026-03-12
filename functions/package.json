@@ -1,0 +1,7 @@
+{
+  "name": "market-data-proxy",
+  "version": "1.0.0",
+  "description": "CORS proxy for Yahoo Finance market data",
+  "main": "index.js",
+  "engines": { "node": ">=18" }
+}
