@@ -369,12 +369,11 @@
 
         async function fetchNews() {
             try {
-                // GDELT GeoJSON API - get recent global events with tone
-                const url = 'https://api.gdeltproject.org/api/v2/doc/doc?query=(market%20OR%20economy%20OR%20stocks%20OR%20inflation%20OR%20tariff)%20sourcelang:english&mode=ArtList&maxrecords=12&format=json&sort=DateDesc&timespan=24h';
-                const d = await (await fetch(url)).json();
+                // News comes from our proxy (which caches GDELT)
+                const d = await (await fetch(API_BASE + '/')).json();
 
-                if (d.articles && d.articles.length > 0) {
-                    const articles = d.articles.slice(0, 6);
+                if (d.news && d.news.length > 0) {
+                    const articles = d.news.slice(0, 6);
 
                     // Simple keyword sentiment
                     const bearishWords = ['crash','fall','drop','crisis','fear','recession','war','sanctions','tariff','sell','decline','plunge','slump','threat','risk','inflation','layoff','cut','loss','weak'];

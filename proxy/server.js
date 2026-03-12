@@ -1,31 +1,31 @@
 const http = require('http');
 const https = require('https');
 
-function fetchJson(url) {
+function fetchRaw(url) {
     return new Promise((resolve, reject) => {
         https.get(url, { headers: { 'User-Agent': 'Mozilla/5.0' } }, (res) => {
             let data = '';
             res.on('data', c => data += c);
-            res.on('end', () => { try { resolve(JSON.parse(data)); } catch(e) { reject(e); } });
+            res.on('end', () => resolve(data));
         }).on('error', reject);
     });
+}
+
+function fetchJson(url) {
+    return fetchRaw(url).then(d => JSON.parse(d));
 }
 
 let cache = null;
 let cacheTime = 0;
 
 async function getData() {
-    if (cache && Date.now() - cacheTime < 60000) return cache;
+    if (cache && Date.now() - cacheTime < 120000) return cache; // 2 min cache
 
     const symbols = {
-        spx:   '%5EGSPC',
-        vix:   '%5EVIX',
-        gold:  'GC%3DF',
-        dxy:   'DX-Y.NYB',
-        tnx:   '%5ETNX',
+        spx: '%5EGSPC', vix: '%5EVIX', gold: 'GC%3DF', dxy: 'DX-Y.NYB', tnx: '%5ETNX',
     };
 
-    const fetches = Object.entries(symbols).map(async ([key, sym]) => {
+    const marketFetches = Object.entries(symbols).map(async ([key, sym]) => {
         try {
             const data = await fetchJson(
                 `https://query1.finance.yahoo.com/v8/finance/chart/${sym}?interval=1d&range=5d`
@@ -36,13 +36,30 @@ async function getData() {
                 prevClose: meta.chartPreviousClose,
                 change: ((meta.regularMarketPrice - meta.chartPreviousClose) / meta.chartPreviousClose * 100),
             }];
-        } catch (e) {
-            return [key, { error: e.message }];
-        }
+        } catch (e) { return [key, { error: e.message }]; }
     });
 
-    const results = await Promise.all(fetches);
-    cache = { ts: new Date().toISOString() };
+    // Fetch news from GDELT
+    let news = [];
+    try {
+        const raw = await fetchRaw(
+            'https://api.gdeltproject.org/api/v2/doc/doc?query=(stocks%20OR%20market%20OR%20economy%20OR%20inflation%20OR%20tariff%20OR%20fed)%20sourcelang:english&mode=ArtList&maxrecords=10&format=json&timespan=24h'
+        );
+        const parsed = JSON.parse(raw);
+        if (parsed.articles) {
+            news = parsed.articles.map(a => ({
+                title: a.title || '',
+                url: a.url || '',
+                domain: a.domain || '',
+                date: a.seendate || '',
+            }));
+        }
+    } catch (e) {
+        console.error('GDELT error:', e.message);
+    }
+
+    const results = await Promise.all(marketFetches);
+    cache = { ts: new Date().toISOString(), news: news };
     for (const [key, val] of results) cache[key] = val;
     cacheTime = Date.now();
     return cache;
