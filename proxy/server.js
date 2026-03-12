@@ -16,18 +16,34 @@ let cacheTime = 0;
 
 async function getData() {
     if (cache && Date.now() - cacheTime < 60000) return cache;
-    const [spxData, vixData] = await Promise.all([
-        fetchJson('https://query1.finance.yahoo.com/v8/finance/chart/%5EGSPC?interval=1d&range=5d'),
-        fetchJson('https://query1.finance.yahoo.com/v8/finance/chart/%5EVIX?interval=1d&range=5d'),
-    ]);
-    const spxMeta = spxData.chart.result[0].meta;
-    const vixMeta = vixData.chart.result[0].meta;
-    cache = {
-        spx: { price: spxMeta.regularMarketPrice, prevClose: spxMeta.chartPreviousClose,
-               change: ((spxMeta.regularMarketPrice - spxMeta.chartPreviousClose) / spxMeta.chartPreviousClose * 100) },
-        vix: { value: vixMeta.regularMarketPrice },
-        ts: new Date().toISOString(),
+
+    const symbols = {
+        spx:   '%5EGSPC',
+        vix:   '%5EVIX',
+        gold:  'GC%3DF',
+        dxy:   'DX-Y.NYB',
+        tnx:   '%5ETNX',
     };
+
+    const fetches = Object.entries(symbols).map(async ([key, sym]) => {
+        try {
+            const data = await fetchJson(
+                `https://query1.finance.yahoo.com/v8/finance/chart/${sym}?interval=1d&range=5d`
+            );
+            const meta = data.chart.result[0].meta;
+            return [key, {
+                price: meta.regularMarketPrice,
+                prevClose: meta.chartPreviousClose,
+                change: ((meta.regularMarketPrice - meta.chartPreviousClose) / meta.chartPreviousClose * 100),
+            }];
+        } catch (e) {
+            return [key, { error: e.message }];
+        }
+    });
+
+    const results = await Promise.all(fetches);
+    cache = { ts: new Date().toISOString() };
+    for (const [key, val] of results) cache[key] = val;
     cacheTime = Date.now();
     return cache;
 }
