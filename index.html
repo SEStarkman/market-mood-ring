@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Market Mood Ring</title>
+    <meta name="description" content="Real-time market sentiment dial combining crypto, equities, volatility, and macro signals.">
+    <meta property="og:title" content="Market Mood Ring">
+    <meta property="og:description" content="Real-time market sentiment — one dial, all signals.">
+    <meta property="og:type" content="website">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Market Mood Ring">
+    <meta name="twitter:description" content="Real-time market sentiment — one dial, all signals.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0a0a0f;
+            --bg-card: #12121a;
+            --bg-card-hover: #1a1a25;
+            --border: #1e1e2e;
+            --text: #e4e4e7;
+            --text-dim: #71717a;
+            --text-muted: #52525b;
+            --extreme-fear: #ef4444;
+            --fear: #f97316;
+            --neutral: #eab308;
+            --greed: #22c55e;
+            --extreme-greed: #10b981;
+            --accent: #6366f1;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 2.5rem;
+        }
+
+        header h1 {
+            font-size: 2rem;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            margin-bottom: 0.25rem;
+        }
+
+        header .subtitle {
+            color: var(--text-dim);
+            font-size: 0.9rem;
+            font-weight: 400;
+        }
+
+        .dial-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 2.5rem;
+        }
+
+        .dial-wrapper {
+            position: relative;
+            width: 340px;
+            height: 200px;
+        }
+
+        .dial-svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        .dial-score {
+            font-size: 4rem;
+            font-weight: 900;
+            font-family: 'JetBrains Mono', monospace;
+            text-align: center;
+            line-height: 1;
+            margin-top: 0.25rem;
+            transition: color 0.5s ease;
+        }
+
+        .dial-label {
+            font-size: 1.1rem;
+            font-weight: 600;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-top: 0.25rem;
+            transition: color 0.5s ease;
+        }
+
+        .dial-scale {
+            display: flex;
+            justify-content: space-between;
+            width: 340px;
+            margin-top: 0.5rem;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .signals-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.75rem;
+            margin-bottom: 2rem;
+        }
+
+        .signal-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1rem 1.25rem;
+            transition: background 0.2s ease, border-color 0.2s ease;
+        }
+
+        .signal-card:hover {
+            background: var(--bg-card-hover);
+            border-color: #2a2a3e;
+        }
+
+        .signal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .signal-name {
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .signal-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            transition: background 0.5s ease;
+        }
+
+        .signal-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            font-family: 'JetBrains Mono', monospace;
+            margin-bottom: 0.15rem;
+        }
+
+        .signal-detail {
+            font-size: 0.8rem;
+            color: var(--text-dim);
+        }
+
+        .signal-change {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 500;
+        }
+
+        .positive { color: var(--greed); }
+        .negative { color: var(--extreme-fear); }
+
+        .breakdown {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+        }
+
+        .breakdown h3 {
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 1rem;
+        }
+
+        .breakdown-bar {
+            display: flex;
+            height: 8px;
+            border-radius: 4px;
+            overflow: hidden;
+            gap: 2px;
+            margin-bottom: 0.75rem;
+        }
+
+        .breakdown-segment {
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+
+        .breakdown-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-size: 0.75rem;
+            color: var(--text-dim);
+        }
+
+        .legend-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+        }
+
+        .legend-score {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 500;
+            color: var(--text);
+        }
+
+        footer {
+            text-align: center;
+            padding: 1rem 0;
+            border-top: 1px solid var(--border);
+        }
+
+        .last-updated {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .refresh-btn {
+            background: none;
+            border: 1px solid var(--border);
+            color: var(--text-dim);
+            font-size: 0.75rem;
+            padding: 0.3rem 0.8rem;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-left: 0.5rem;
+            transition: all 0.2s ease;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .refresh-btn:hover {
+            border-color: var(--accent);
+            color: var(--text);
+        }
+
+        .credit {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin-top: 0.75rem;
+        }
+
+        .credit a {
+            color: var(--text-dim);
+            text-decoration: none;
+        }
+
+        .credit a:hover {
+            color: var(--text);
+        }
+
+        .loading .signal-value,
+        .loading .dial-score {
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        @media (max-width: 600px) {
+            .container { padding: 1.5rem 1rem; }
+            header h1 { font-size: 1.5rem; }
+            .dial-wrapper { width: 280px; height: 170px; }
+            .dial-scale { width: 280px; }
+            .dial-score { font-size: 3rem; }
+            .signals-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Market Mood Ring</h1>
+            <div class="subtitle">Real-time sentiment across crypto, equities, and macro</div>
+        </header>
+
+        <div class="dial-container">
+            <div class="dial-wrapper">
+                <svg class="dial-svg" viewBox="0 0 340 200">
+                    <defs>
+                        <linearGradient id="arcGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" stop-color="#ef4444" />
+                            <stop offset="25%" stop-color="#f97316" />
+                            <stop offset="50%" stop-color="#eab308" />
+                            <stop offset="75%" stop-color="#22c55e" />
+                            <stop offset="100%" stop-color="#10b981" />
+                        </linearGradient>
+                    </defs>
+                    <path d="M 30 180 A 140 140 0 0 1 310 180" fill="none" stroke="#1e1e2e" stroke-width="16" stroke-linecap="round"/>
+                    <path d="M 30 180 A 140 140 0 0 1 310 180" fill="none" stroke="url(#arcGradient)" stroke-width="16" stroke-linecap="round" opacity="0.8"/>
+                    <g id="needle" transform="rotate(-90, 170, 180)">
+                        <line x1="170" y1="180" x2="170" y2="55" stroke="#e4e4e7" stroke-width="2.5" stroke-linecap="round"/>
+                        <circle cx="170" cy="180" r="6" fill="#e4e4e7"/>
+                        <circle cx="170" cy="180" r="3" fill="#0a0a0f"/>
+                    </g>
+                </svg>
+            </div>
+            <div class="dial-score" id="compositeScore">--</div>
+            <div class="dial-label" id="compositeLabel">Loading...</div>
+            <div class="dial-scale">
+                <span>Extreme Fear</span>
+                <span>Extreme Greed</span>
+            </div>
+        </div>
+
+        <div class="signals-grid" id="signalsGrid">
+            <div class="signal-card loading" id="card-crypto-fg">
+                <div class="signal-header">
+                    <span class="signal-name">Crypto Fear & Greed</span>
+                    <div class="signal-dot"></div>
+                </div>
+                <div class="signal-value">--</div>
+                <div class="signal-detail">Loading...</div>
+            </div>
+            <div class="signal-card loading" id="card-btc">
+                <div class="signal-header">
+                    <span class="signal-name">Bitcoin</span>
+                    <div class="signal-dot"></div>
+                </div>
+                <div class="signal-value">--</div>
+                <div class="signal-detail">Loading...</div>
+            </div>
+            <div class="signal-card loading" id="card-spx">
+                <div class="signal-header">
+                    <span class="signal-name">S&P 500</span>
+                    <div class="signal-dot"></div>
+                </div>
+                <div class="signal-value">--</div>
+                <div class="signal-detail">Loading...</div>
+            </div>
+            <div class="signal-card loading" id="card-vix">
+                <div class="signal-header">
+                    <span class="signal-name">VIX (Volatility)</span>
+                    <div class="signal-dot"></div>
+                </div>
+                <div class="signal-value">--</div>
+                <div class="signal-detail">Loading...</div>
+            </div>
+        </div>
+
+        <div class="breakdown" id="breakdownSection">
+            <h3>Sentiment Breakdown</h3>
+            <div class="breakdown-bar" id="breakdownBar"></div>
+            <div class="breakdown-legend" id="breakdownLegend"></div>
+        </div>
+
+        <footer>
+            <div class="last-updated">
+                Last updated: <span id="lastUpdated">--</span>
+                <button class="refresh-btn" onclick="fetchAll()">Refresh</button>
+            </div>
+            <div class="credit">
+                Built by <a href="https://samstarkman.com" target="_blank">Sam Starkman</a> &middot;
+                Data from CoinGecko, Yahoo Finance
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        let signals = { cryptoFG: null, btc24h: null, spx24h: null, vix: null };
+
+        async function fetchCryptoFearGreed() {
+            try {
+                const res = await fetch('https://api.alternative.me/fng/?limit=1');
+                const data = await res.json();
+                const fg = data.data[0];
+                signals.cryptoFG = parseInt(fg.value);
+                updateCard('card-crypto-fg', {
+                    value: fg.value + '/100',
+                    detail: fg.value_classification,
+                    sentiment: parseInt(fg.value),
+                });
+            } catch (e) {
+                console.error('Crypto F&G error:', e);
+                updateCard('card-crypto-fg', { value: 'N/A', detail: 'Unavailable', sentiment: 50 });
+            }
+        }
+
+        async function fetchBTC() {
+            try {
+                const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true');
+                const data = await res.json();
+                const price = data.bitcoin.usd;
+                const change = data.bitcoin.usd_24h_change;
+                signals.btc24h = change;
+                updateCard('card-btc', {
+                    value: '$' + price.toLocaleString('en-US', { maximumFractionDigits: 0 }),
+                    detail: formatChange(change),
+                    sentiment: changeTo100(change, 5),
+                });
+            } catch (e) {
+                console.error('BTC error:', e);
+                updateCard('card-btc', { value: 'N/A', detail: 'Unavailable', sentiment: 50 });
+            }
+        }
+
+        async function fetchSPX() {
+            try {
+                const res = await fetch('https://query1.finance.yahoo.com/v8/finance/chart/%5EGSPC?interval=1d&range=5d');
+                if (!res.ok) throw new Error('Yahoo blocked');
+                const data = await res.json();
+                const meta = data.chart.result[0].meta;
+                const price = meta.regularMarketPrice;
+                const prevClose = meta.chartPreviousClose;
+                const change = ((price - prevClose) / prevClose) * 100;
+                signals.spx24h = change;
+                updateCard('card-spx', {
+                    value: price.toLocaleString('en-US', { maximumFractionDigits: 0 }),
+                    detail: formatChange(change),
+                    sentiment: changeTo100(change, 3),
+                });
+            } catch (e) {
+                console.error('SPX error:', e);
+                updateCard('card-spx', { value: 'N/A', detail: 'Unavailable', sentiment: 50 });
+            }
+        }
+
+        async function fetchVIX() {
+            try {
+                const res = await fetch('https://query1.finance.yahoo.com/v8/finance/chart/%5EVIX?interval=1d&range=5d');
+                if (!res.ok) throw new Error('Yahoo blocked');
+                const data = await res.json();
+                const vixVal = data.chart.result[0].meta.regularMarketPrice;
+                signals.vix = vixVal;
+                let label = 'Calm';
+                if (vixVal > 30) label = 'Extreme Fear';
+                else if (vixVal > 25) label = 'Elevated Fear';
+                else if (vixVal > 20) label = 'Cautious';
+                else if (vixVal > 15) label = 'Neutral';
+                updateCard('card-vix', {
+                    value: vixVal.toFixed(1),
+                    detail: label,
+                    sentiment: vixTo100(vixVal),
+                });
+            } catch (e) {
+                console.error('VIX error:', e);
+                updateCard('card-vix', { value: 'N/A', detail: 'Unavailable', sentiment: 50 });
+            }
+        }
+
+        function changeTo100(pctChange, extremeThreshold) {
+            const clamped = Math.max(-extremeThreshold, Math.min(extremeThreshold, pctChange));
+            return Math.round(((clamped + extremeThreshold) / (2 * extremeThreshold)) * 100);
+        }
+
+        function vixTo100(vix) {
+            const clamped = Math.max(10, Math.min(40, vix));
+            return Math.round(((40 - clamped) / 30) * 100);
+        }
+
+        function formatChange(pct) {
+            const sign = pct >= 0 ? '+' : '';
+            return '<span class="signal-change ' + (pct >= 0 ? 'positive' : 'negative') + '">' + sign + pct.toFixed(2) + '%</span>';
+        }
+
+        function sentimentColor(score) {
+            if (score <= 20) return '#ef4444';
+            if (score <= 40) return '#f97316';
+            if (score <= 60) return '#eab308';
+            if (score <= 80) return '#22c55e';
+            return '#10b981';
+        }
+
+        function sentimentLabel(score) {
+            if (score <= 15) return 'Extreme Fear';
+            if (score <= 35) return 'Fear';
+            if (score <= 50) return 'Cautious';
+            if (score <= 65) return 'Neutral';
+            if (score <= 80) return 'Greed';
+            return 'Extreme Greed';
+        }
+
+        function updateCard(id, opts) {
+            const card = document.getElementById(id);
+            card.classList.remove('loading');
+            card.querySelector('.signal-value').innerHTML = opts.value;
+            card.querySelector('.signal-detail').innerHTML = opts.detail;
+            card.querySelector('.signal-dot').style.background = sentimentColor(opts.sentiment);
+        }
+
+        function updateNeedle(score) {
+            const angle = -90 + (score / 100) * 180;
+            const needle = document.getElementById('needle');
+            needle.style.transition = 'transform 1s cubic-bezier(0.34, 1.56, 0.64, 1)';
+            needle.setAttribute('transform', 'rotate(' + angle + ', 170, 180)');
+        }
+
+        function computeComposite() {
+            const weights = { cryptoFG: 0.35, btc: 0.15, spx: 0.25, vix: 0.25 };
+            let score = 0, totalWeight = 0;
+            const components = [];
+
+            if (signals.cryptoFG !== null) {
+                const s = signals.cryptoFG;
+                score += s * weights.cryptoFG; totalWeight += weights.cryptoFG;
+                components.push({ name: 'Crypto F&G', score: s, weight: weights.cryptoFG, color: sentimentColor(s) });
+            }
+            if (signals.btc24h !== null) {
+                const s = changeTo100(signals.btc24h, 5);
+                score += s * weights.btc; totalWeight += weights.btc;
+                components.push({ name: 'Bitcoin', score: s, weight: weights.btc, color: sentimentColor(s) });
+            }
+            if (signals.spx24h !== null) {
+                const s = changeTo100(signals.spx24h, 3);
+                score += s * weights.spx; totalWeight += weights.spx;
+                components.push({ name: 'S&P 500', score: s, weight: weights.spx, color: sentimentColor(s) });
+            }
+            if (signals.vix !== null) {
+                const s = vixTo100(signals.vix);
+                score += s * weights.vix; totalWeight += weights.vix;
+                components.push({ name: 'VIX', score: s, weight: weights.vix, color: sentimentColor(s) });
+            }
+
+            if (totalWeight === 0) return;
+            const composite = Math.round(score / totalWeight);
+
+            document.getElementById('compositeScore').textContent = composite;
+            document.getElementById('compositeScore').style.color = sentimentColor(composite);
+            document.getElementById('compositeLabel').textContent = sentimentLabel(composite);
+            document.getElementById('compositeLabel').style.color = sentimentColor(composite);
+            updateNeedle(composite);
+
+            const bar = document.getElementById('breakdownBar');
+            const legend = document.getElementById('breakdownLegend');
+            bar.innerHTML = components.map(function(c) {
+                return '<div class="breakdown-segment" style="width:' + (c.weight / totalWeight * 100) + '%;background:' + c.color + '"></div>';
+            }).join('');
+            legend.innerHTML = components.map(function(c) {
+                return '<div class="legend-item"><div class="legend-dot" style="background:' + c.color + '"></div>' + c.name + ' <span class="legend-score">' + c.score + '</span></div>';
+            }).join('');
+        }
+
+        async function fetchAll() {
+            await Promise.all([fetchCryptoFearGreed(), fetchBTC(), fetchSPX(), fetchVIX()]);
+            computeComposite();
+            document.getElementById('lastUpdated').textContent =
+                new Date().toLocaleString('en-US', {
+                    hour: 'numeric', minute: '2-digit', second: '2-digit',
+                    hour12: true, month: 'short', day: 'numeric'
+                });
+        }
+
+        fetchAll();
+        setInterval(fetchAll, 120000);
+    </script>
+</body>
+</html>
